@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Grid Solver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background-color: #f4f7f9;
+            --container-bg: #ffffff;
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --secondary-color: #6c757d;
+            --secondary-hover: #5a6268;
+            --tile-bg: #e9ecef;
+            --tile-hover: #dee2e6;
+            --tick-bg: #d4edda;
+            --tick-text: #155724;
+            --x-bg: #f8d7da;
+            --x-text: #721c24;
+            --hint-color: #90ee90;
+            --win-color: #28a745;
+            --text-color: #343a40;
+            --border-color: #ced4da;
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        #game-container {
+            padding: 25px 30px;
+            background-color: var(--container-bg);
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        #instructions {
+            margin-bottom: 20px;
+            color: #666;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 15px;
+            line-height: 1.5;
+        }
+
+        #grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+        }
+        
+        #win-message {
+            display: none;
+            margin-top: -10px;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--win-color);
+        }
+
+        .tile {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 8px;
+            font-size: clamp(1.5em, 6vw, 2.5em);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            background-color: var(--tile-bg);
+            transition: background-color 0.2s, transform 0.1s;
+            user-select: none;
+        }
+
+        .tile:hover { background-color: var(--tile-hover); }
+        .tile:active { transform: scale(0.95); }
+        .tile.tick { background-color: var(--tick-bg); color: var(--tick-text); }
+        .tile.x { background-color: var(--x-bg); color: var(--x-text); }
+        .tile.hint {
+            background-color: var(--hint-color) !important;
+            box-shadow: 0 0 15px var(--hint-color);
+        }
+
+        #controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3); }
+        .btn-secondary { background-color: var(--secondary-color); color: white; }
+        .btn-secondary:hover { background-color: var(--secondary-hover); }
+        #play-mode-section { padding-top: 15px; border-top: 1px solid #eee; }
+
+        .info-section {
+            background: var(--container-bg);
+            padding: 25px 30px;
+            border-radius: 12px;
+            text-align: left;
+            margin-bottom: 20px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+        .info-section h2 { margin-top: 0; border-bottom: 2px solid var(--primary-color); padding-bottom: 5px; display: inline-block; }
+        .info-section p, .info-section li { line-height: 1.6; color: #495057; }
+        .info-section code { background-color: #e9ecef; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="game-container">
+        <h1 id="main-title">Connect Grid Solver</h1>
+        <div id="instructions"></div>
+        <div id="grid-container"></div>
+        <p id="win-message"></p>
+
+        <div id="controls">
+            <button id="hint-btn" class="btn-primary">Hint</button>
+            <button id="main-action-btn" class="btn-secondary">Clear Board</button>
+        </div>
+
+        <div id="play-mode-section">
+            <button id="mode-switch-btn">Switch to Play Mode</button>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h2>About the Game</h2>
+        <p><strong>Connect Grid</strong> is a logic puzzle on a 4x4 grid. The grid hides 8 Ticks (✅) and 8 Crosses (❌). The goal is to uncover a line of four Ticks—horizontally, vertically, or diagonally—in the fewest moves.</p>
+        <p>Use <strong>Solver Mode</strong> to input any board and find the best move, or switch to <strong>Play Mode</strong> for a random, winnable game.</p>
+    </div>
+
+    <div class="info-section">
+        <h2>The Math Behind the Hint</h2>
+        <p>The "Hint" button uses a scoring algorithm to find the most strategic move:</p>
+        <ol>
+            <li><strong>Identify Winning Lines:</strong> It checks all 10 possible winning lines (4 rows, 4 columns, 2 diagonals).</li>
+            <li><strong>Score Each Line:</strong>
+                <ul>
+                    <li>If a line contains a revealed ❌, it's impossible. It gets a score of <strong>-1</strong>.</li>
+                    <li>Otherwise, its score is <code>(1 + revealed_ticks)²</code>. This formula heavily prioritizes lines that are closer to completion.</li>
+                </ul>
+            </li>
+            <li><strong>Score Each Tile:</strong> An empty tile's score is the sum of the scores of every potential winning line it is a part of.</li>
+            <li><strong>Find the Best Move:</strong> The tile with the highest total score is the best move, as it offers the highest probability of leading to a win.</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const GRID_SIZE = 4;
+    const gridContainer = document.getElementById('grid-container');
+    const hintBtn = document.getElementById('hint-btn');
+    const mainActionBtn = document.getElementById('main-action-btn');
+    const modeSwitchBtn = document.getElementById('mode-switch-btn');
+    const mainTitle = document.getElementById('main-title');
+    const instructions = document.getElementById('instructions');
+    const winMessage = document.getElementById('win-message');
+
+    let tilesData = [];
+    let revealed = [];
+    let tileElements = [];
+    let cost = 0;
+    let isSolverMode = true;
+
+    function initializeGrid() {
+        gridContainer.innerHTML = '';
+        tileElements = [];
+        for (let r = 0; r < GRID_SIZE; r++) {
+            tileElements[r] = [];
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const tile = document.createElement('div');
+                tile.classList.add('tile');
+                tile.dataset.r = r;
+                tile.dataset.c = c;
+                gridContainer.appendChild(tile);
+                tileElements[r][c] = tile;
+            }
+        }
+    }
+
+    function renderGrid() {
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const tileEl = tileElements[r][c];
+                const content = tilesData[r][c];
+                tileEl.className = 'tile';
+                tileEl.textContent = '';
+                if (isSolverMode) {
+                    if (content) {
+                        tileEl.textContent = content === 'Tick' ? '✅' : '❌';
+                        tileEl.classList.add(content.toLowerCase());
+                    }
+                } else { // Play Mode
+                    if (revealed[r][c]) {
+                        tileEl.textContent = content === 'Tick' ? '✅' : '❌';
+                        tileEl.classList.add(content.toLowerCase(), 'revealed');
+                    }
+                }
+            }
+        }
+    }
+
+    function setMode(mode) {
+        isSolverMode = (mode === 'solver');
+        winMessage.style.display = 'none';
+        initializeGrid();
+
+        if (isSolverMode) {
+            mainTitle.textContent = "Connect Grid Solver";
+            // --- THIS IS THE MODIFIED PART ---
+            instructions.innerHTML = `
+                <div>Click tiles to cycle:<br>Empty → ✅ → ❌</div>
+                <div>Then press <strong>Hint</strong><br>for the optimal move.</div>
+            `;
+            mainActionBtn.textContent = "Clear Board";
+            modeSwitchBtn.textContent = "Switch to Play Mode";
+            tilesData = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
+            tileElements.flat().forEach(tile => tile.addEventListener('click', handleSolverClick));
+            renderGrid();
+        } else { // Play Mode
+            mainTitle.textContent = "Connect Grid Game";
+            cost = 0;
+            instructions.innerHTML = `Find 4 Ticks in a row! Cost: <span id="cost-span">${cost}</span>`;
+            mainActionBtn.textContent = "New Game";
+            modeSwitchBtn.textContent = "Switch to Solver Mode";
+            tileElements.flat().forEach(tile => tile.addEventListener('click', handlePlayClick));
+            newGame();
+        }
+    }
+
+    function handleSolverClick(event) {
+        const r = parseInt(event.target.dataset.r);
+        const c = parseInt(event.target.dataset.c);
+        const states = [null, 'Tick', 'X'];
+        const currentIndex = states.indexOf(tilesData[r][c]);
+        tilesData[r][c] = states[(currentIndex + 1) % states.length];
+        renderGrid();
+    }
+    
+    function newGame() {
+        generateBoardWithGuaranteedWin();
+        revealed = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(false));
+        cost = 0;
+        updateCostLabel();
+        winMessage.style.display = 'none';
+        renderGrid();
+    }
+
+    function generateBoardWithGuaranteedWin() {
+        let winnableBoard = false;
+        while (!winnableBoard) {
+            let items = Array(8).fill('Tick').concat(Array(8).fill('X'));
+            items.sort(() => Math.random() - 0.5);
+            tilesData = [];
+            while(items.length) tilesData.push(items.splice(0,4));
+            if (getPossibleLines().some(line => line.every(([r, c]) => tilesData[r][c] === 'Tick'))) {
+                winnableBoard = true;
+            }
+        }
+    }
+    
+    function handlePlayClick(event) {
+        const r = parseInt(event.target.dataset.r);
+        const c = parseInt(event.target.dataset.c);
+        if (revealed[r][c] || checkWin()) return;
+
+        revealed[r][c] = true;
+        cost++;
+        updateCostLabel();
+        renderGrid();
+        
+        if (checkWin()) {
+            winMessage.innerHTML = getWinFeedback(cost);
+            winMessage.style.display = 'block';
+        }
+    }
+    
+    function getWinFeedback(moveCount) {
+        switch (true) {
+            case (moveCount === 4): return `MIND BLOWN! You solved it in just 4 moves! 🤯`;
+            case (moveCount === 5): return `Incredible! A perfect solve in 5 moves! 😎`;
+            case (moveCount === 6): return `Amazing! You did it in 6 moves! 🎉`;
+            case (moveCount <= 8): return `Excellent work! Solved in ${moveCount} moves! 😄`;
+            case (moveCount <= 11): return `Great job! You found it in ${moveCount} moves! 👍`;
+            case (moveCount <= 14): return `Nice! Solved in ${moveCount} moves. 🙂`;
+            case (moveCount === 15): return `Phew! You got it in 15 moves. 😉`;
+            case (moveCount === 16): return `You solved it in... 16 moves. 😅`;
+            default: return `You won in ${moveCount} moves!`;
+        }
+    }
+
+    function updateCostLabel() {
+        const costSpan = document.getElementById('cost-span');
+        if (costSpan) costSpan.textContent = cost;
+    }
+    
+    function checkWin() {
+        return getPossibleLines().some(line => line.every(([r, c]) => revealed[r][c] && tilesData[r][c] === 'Tick'));
+    }
+
+    function getPossibleLines() {
+        const lines = [];
+        for (let i = 0; i < GRID_SIZE; i++) {
+            lines.push(Array.from({length: GRID_SIZE}, (_, j) => [i, j]));
+            lines.push(Array.from({length: GRID_SIZE}, (_, j) => [j, i]));
+        }
+        lines.push(Array.from({length: GRID_SIZE}, (_, i) => [i, i]));
+        lines.push(Array.from({length: GRID_SIZE}, (_, i) => [i, GRID_SIZE - 1 - i]));
+        return lines;
+    }
+
+    function calculateBestMove() {
+        const possibleLines = getPossibleLines();
+        const lineScores = [];
+        for (const line of possibleLines) {
+            let tickCount = 0, xCount = 0;
+            for (const [r, c] of line) {
+                const isKnown = isSolverMode ? !!tilesData[r][c] : revealed[r][c];
+                if (isKnown) {
+                    if (tilesData[r][c] === 'Tick') tickCount++;
+                    else if (tilesData[r][c] === 'X') xCount++;
+                }
+            }
+            if (xCount > 0) lineScores.push(-1);
+            else lineScores.push(Math.pow(1 + tickCount, 2));
+        }
+
+        const tileScores = {};
+        let maxScore = -1;
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const isKnown = isSolverMode ? !!tilesData[r][c] : revealed[r][c];
+                if (!isKnown) {
+                    let score = 0;
+                    possibleLines.forEach((line, i) => {
+                        if (lineScores[i] !== -1 && line.some(([lr, lc]) => lr === r && lc === c)) {
+                            score += lineScores[i];
+                        }
+                    });
+                    tileScores[`${r},${c}`] = score;
+                    if (score > maxScore) maxScore = score;
+                }
+            }
+        }
+        const bestMoves = Object.entries(tileScores)
+            .filter(([, score]) => score === maxScore)
+            .map(([key]) => key.split(',').map(Number));
+        return bestMoves.length > 0 ? bestMoves[Math.floor(Math.random() * bestMoves.length)] : null;
+    }
+    
+    function showHint() {
+        tileElements.flat().forEach(tile => tile.classList.remove('hint'));
+        const bestMove = calculateBestMove();
+        if (bestMove) {
+            const [r, c] = bestMove;
+            tileElements[r][c].classList.add('hint');
+        }
+    }
+
+    hintBtn.addEventListener('click', showHint);
+    mainActionBtn.addEventListener('click', () => isSolverMode ? setMode('solver') : newGame());
+    modeSwitchBtn.addEventListener('click', () => setMode(isSolverMode ? 'play' : 'solver'));
+
+    setMode('solver');
+});
+</script>
+
+</body>
+</html>```
